@@ -21,10 +21,14 @@ module.exports = function(sql, connProps, callback, bDebug) {
 	function sqlWrap(sql) {
 		return `
 			SET MARKUP CSV ON
+			SET FEEDBACK OFF
+			SET PAGESIZE 50000
+			SET LINESIZE 32767
 			${sql};
 			exit;
 		`
 	}
+
 	if (bDebug) {
 		console.log('SQL:', sqlWrap(sql))
 	}
@@ -82,7 +86,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 		mySpawn.stdout.on('data', function(data) {
 			var dataStr = data.toString();
 			result.stdout += dataStr;
-			if (dataStr.indexOf('[ERROR]') !== -1) { // мавен не даёт по-другому определить ошибку
+			if (dataStr.indexOf('ORA-') !== -1) {
 				bError = true;
 			}
 		});
