@@ -1,0 +1,15 @@
+{
+  "name": "sqlplus",
+  "version": "1.0.0",
+  "description": "A simple wrapper for Oracle SQL*Plus v.12.2+",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "mankey-ru",
+  "license": "ISC",
+  "dependencies": {
+    "csv-parse": "^1.2.0",
+    "tmp": "0.0.31"
+  }
+}
