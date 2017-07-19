@@ -10,15 +10,12 @@ var tmpObj = tmp.fileSync({
 	postfix: '.sql'
 });
 
-module.exports = function(sql, connProps, callback) {
+module.exports = function(sql, connProps, callback, bDebug) {
 	if (typeof sql !== 'string') {
 		return 'Please provide first argument: {string} i.e. SELECT ID, NAME FROM USERS';
 	}
 	if (typeof connProps !== 'string') {
-		return 'Please specify second argument: USER/PWD@TNS_NAME';
-	}
-	if (typeof connProps !== 'string') {
-		return 'Please specify second argument: USER/PWD@TNS_NAME';
+		return 'Please specify second argument: {string} i.e. USER/PWD@TNS_NAME';
 	}
 
 	function sqlWrap(sql) {
@@ -28,6 +25,9 @@ module.exports = function(sql, connProps, callback) {
 			exit;
 		`
 	}
+	if (bDebug) {
+		console.log('SQL:', sqlWrap(sql))
+	}
 	fs.writeSync(tmpObj.fd, sqlWrap(sql));
 	// console.log(fs.readFileSync(tmpObj.name).toString());
 	// process.exit(0)
@@ -36,6 +36,9 @@ module.exports = function(sql, connProps, callback) {
 	Spawn(sqlplusCall + ' @' + tmpObj.name, {
 		onSuccess: function(result) {
 			var resultStr = result.stdout;
+			if (bDebug) {
+				console.log('COMMAND RESULT: ' + resultStr)
+			}
 			var colNamesArray = resultStr.split(/\r\n?|\n/, 2)[1].split('"').join('').split(',');
 			var csvparseOpt = {
 				columns: colNamesArray,
@@ -60,8 +63,9 @@ module.exports = function(sql, connProps, callback) {
 		};
 
 		opt = opt || {};
-
-		//console.log('Spawn: running command «' + (opt.cwd ? opt.cwd + ' > ' : '') + commandString + '»');
+		if (bDebug) {
+			console.log('Spawn: running command «' + (opt.cwd ? opt.cwd + ' > ' : '') + commandString + '»');
+		}
 		var spawnOpt = {};
 		if (opt.cwd) {
 			spawnOpt.cwd = opt.cwd;
