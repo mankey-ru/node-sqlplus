@@ -29,89 +29,70 @@ module.exports = function(sql, connProps, callback, bDebug) {
 		`
 	}
 
-	if (bDebug) {
-		console.log('SQL:', sqlWrap(sql))
-	}
 	fs.writeSync(tmpObj.fd, sqlWrap(sql));
-	// console.log(fs.readFileSync(tmpObj.name).toString());
-	// process.exit(0)
-	var sqlplusCall = 'sqlplus -s ' + connProps;
+	Spawn('sqlplus -s ' + connProps + ' @' + tmpObj.name)
 
-	Spawn(sqlplusCall + ' @' + tmpObj.name, {
-		onSuccess: function(result) {
-			var resultStr = result.stdout;
-			if (bDebug) {
-				console.log('COMMAND RESULT: ' + resultStr)
-			}
-			var colNamesArray = resultStr.split(/\r\n?|\n/, 2)[1].split('"').join('').split(',');
-			var csvparseOpt = {
-				columns: colNamesArray,
-				skip_lines_with_empty_values: true,
-				from: 2 // first line is blank, second is headings
-			};
-			csvparse(resultStr, csvparseOpt, function(err, data) {
-				if (err) {
-					console.log('CSV parsing error: ' + err)
-				}
-				callback(err, data);
-			})
-		}
-	})
-
-	function Spawn(commandString, opt) {
+	function Spawn(commandString) {
 		var cmd = {
 			app: isWin ? process.env.comspec : process.env.SHELL || '/bin/bash', // путь к командному интерпретатору
 			argName: isWin ? '/c' : '-c', // имя аргумента командного интерпретатора, в который можно передавать команду
 			delim: isWin ? '&&' : ';', // разделитель инлайн команд
 			diskOpt: isWin ? '/d' : '' // опция cd указывающая что аргумент команды будет в формате drive:directory
 		};
-
-		opt = opt || {};
 		if (bDebug) {
-			console.log('Spawn: running command «' + (opt.cwd ? opt.cwd + ' > ' : '') + commandString + '»');
+			console.log('SQL:', sqlWrap(sql))
+			console.log('COMMAND: «' + commandString + '»');
 		}
-		var spawnOpt = {};
-		if (opt.cwd) {
-			spawnOpt.cwd = opt.cwd;
-		}
-		spawnOpt.encoding = 'utf8';
-		var mySpawn = spawn(cmd.app, [cmd.argName, commandString], spawnOpt);
-		// http://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options
-		var bError = false;
-		var result = {
-			stdout: '',
-			stderr: ''
-		};
+		//spawnOpt.encoding = 'utf8';
+		var mySpawn = spawn(cmd.app, [cmd.argName, commandString]);
+		// http://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options	
+		var output = '';
 
-		mySpawn.stdout.on('data', function(data) {
+		mySpawn.stdout.on('data', onOutput);
+		mySpawn.stderr.on('data', onOutput);
+
+		function onOutput(data) {
 			var dataStr = data.toString();
-			result.stdout += dataStr;
-			if (dataStr.indexOf('ORA-') !== -1) {
-				bError = true;
+			output += dataStr;
+		}
+
+		mySpawn.on('exit', finish);
+		var exitTimeout = setTimeout(finish, 5000);
+
+		function finish(exitCode) {
+			clearTimeout(exitTimeout);
+			var resultError = '';
+			if (typeof exitCode === 'undefined') {
+				resultError += 'Command timed out\n';
 			}
-		});
-		mySpawn.stderr.on('data', function(data) {
-			var dataStr = data.toString();
-			console.log('STDERR=' + dataStr);
-			result.stderr += dataStr;
-			bError = true;
-		});
-		mySpawn.on('exit', function(code) {
-			//console.log('EXITCODE=' + code);
-			var hasOpt = typeof opt !== 'undefined';
-			if (hasOpt === true) {
-				if (bError === false && typeof opt.onSuccess === 'function') {
-					opt.onSuccess(result)
-				}
-				if (bError === true && typeof opt.onError === 'function') {
-					opt.onError(result)
-				}
-				if (typeof opt.onComplete === 'function') {
-					opt.onComplete(result)
-				}
+			if (output.indexOf('ORA-') !== -1) {
+				resultError += output;
 			}
-		});
+			if (bDebug) {
+				console.log('EXITCODE: ' + exitCode);
+				console.log('COMMAND OUTPUT: ' + output)
+			}
+			if (resultError === '') {
+				var colNamesArray = output.split(/\r\n?|\n/, 2)[1].split('"').join('').split(',');
+				var csvparseOpt = {
+					columns: colNamesArray,
+					skip_lines_with_empty_values: true,
+					from: 2 // first line is blank, second is headings
+				};
+				csvparse(output, csvparseOpt, function(parseErr, data) {
+					if (parseErr) {
+						console.log('CSV parsing error: ' + parseErr)
+					}
+					callback(parseErr || resultError, data);
+				})
+			}
+			else {
+				callback(resultError);
+			}
+		}
 	};
+
+
 
 	/*`
 	SET WRAP OFF
