@@ -6,10 +6,6 @@ const csvparse = require('csv-parse');
 const isWin = process.platform === 'win32';
 const slash = isWin ? '\\' : '/';
 
-var tmpObj = tmp.fileSync({
-	postfix: '.sql'
-});
-
 module.exports = function(sql, connProps, callback, bDebug) {
 	if (typeof sql !== 'string') {
 		return 'Please provide first argument: {string} i.e. SELECT ID, NAME FROM USERS';
@@ -17,6 +13,10 @@ module.exports = function(sql, connProps, callback, bDebug) {
 	if (typeof connProps !== 'string') {
 		return 'Please specify second argument: {string} i.e. USER/PWD@TNS_NAME';
 	}
+
+	var tmpObj = tmp.fileSync({
+		postfix: '.sql'
+	});
 
 	function sqlWrap(sql) {
 		return `
@@ -67,6 +67,9 @@ module.exports = function(sql, connProps, callback, bDebug) {
 			}
 			if (output.indexOf('ORA-') !== -1) {
 				resultError += output;
+			}
+			if (output === '') {
+				resultError += 'Output is empty (missing DLL?)';
 			}
 			if (bDebug) {
 				console.log('EXITCODE: ' + exitCode);
