@@ -8,10 +8,10 @@ const slash = isWin ? '\\' : '/';
 
 module.exports = function(sql, connProps, callback, bDebug) {
 	if (typeof sql !== 'string') {
-		return 'Please provide first argument: {string} i.e. SELECT ID, NAME FROM USERS';
+		callback('Please provide first argument: {string} i.e. SELECT ID, NAME FROM USERS');
 	}
 	if (typeof connProps !== 'string') {
-		return 'Please specify second argument: {string} i.e. USER/PWD@TNS_NAME';
+		callback('Please specify second argument: {string} i.e. USER/PWD@TNS_NAME');
 	}
 
 	var tmpObj = tmp.fileSync({
@@ -62,6 +62,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 		function finish(exitCode) {
 			clearTimeout(exitTimeout);
 			var resultError = '';
+			var bEmpty = false;
 			if (typeof exitCode === 'undefined') {
 				resultError += 'Command timed out\n';
 			}
@@ -69,13 +70,13 @@ module.exports = function(sql, connProps, callback, bDebug) {
 				resultError += output;
 			}
 			if (output === '') {
-				resultError += 'Output is empty (missing DLL?)';
+				bEmpty = true;
 			}
 			if (bDebug) {
 				console.log('EXITCODE: ' + exitCode);
 				console.log('COMMAND OUTPUT: ' + output)
 			}
-			if (resultError === '') {
+			if (output !== '' && resultError === '') {
 				var colNamesArray = output.split(/\r\n?|\n/, 2)[1].split('"').join('').split(',');
 				var csvparseOpt = {
 					columns: colNamesArray,
@@ -90,7 +91,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 				})
 			}
 			else {
-				callback(resultError);
+				callback(resultError, null, bEmpty);
 			}
 		}
 	};
