@@ -19,12 +19,12 @@ Windows users should then add this dir to PATH system variable
 ```
 var sql = `select * from mytable`;
 var connProps = 'myScheme/mySchemePassword@myTnsName';
-sqlplus(sql, connProps, function(err, data){
+sqlplus(sql, connProps, function(err, rows){
 	if (err) {
 		console.log(err)
 	}
 	else {
-		console.log(data)
+		console.log(rows)
 	}
 });
 ```
