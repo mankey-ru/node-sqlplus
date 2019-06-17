@@ -1,10 +1,10 @@
 const fs = require('fs');
 const tmp = require('tmp');
+// const path = require('path');
 const spawn = require('child_process').spawn;
 const csvparse = require('csv-parse');
 
 const isWin = process.platform === 'win32';
-const slash = isWin ? '\\' : '/';
 
 module.exports = function(sql, connProps, callback, bDebug) {
 	if (typeof sql !== 'string') {
@@ -33,8 +33,16 @@ module.exports = function(sql, connProps, callback, bDebug) {
 	Spawn('sqlplus -s ' + connProps + ' @' + tmpObj.name)
 
 	function Spawn(commandString) {
+		var app;
+		if (isWin) {
+			app = process.env.comspec || 'cmd.exe';
+		}
+		else {
+			app = process.env.SHELL || '/bin/bash';
+		}
+
 		var cmd = {
-			app: isWin ? process.env.comspec : process.env.SHELL || '/bin/bash', // путь к командному интерпретатору
+			app, // путь к командному интерпретатору
 			argName: isWin ? '/c' : '-c', // имя аргумента командного интерпретатора, в который можно передавать команду
 			delim: isWin ? '&&' : ';', // разделитель инлайн команд
 			diskOpt: isWin ? '/d' : '' // опция cd указывающая что аргумент команды будет в формате drive:directory
@@ -95,18 +103,4 @@ module.exports = function(sql, connProps, callback, bDebug) {
 			}
 		}
 	};
-
-
-
-	/*`
-	SET WRAP OFF
-	SET PAGESIZE 0
-	select * from APP_PASSPORT_TYPE_DEF
-
-	--commit;
-	--exit
-
-	--end;
-	--/
-	`*/
 }
