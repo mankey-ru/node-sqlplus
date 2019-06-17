@@ -9,7 +9,7 @@
   "author": "mankey-ru",
   "license": "ISC",
   "dependencies": {
-    "csv-parse": "^1.2.0",
-    "tmp": "0.0.31"
+    "csv-parse": "~1.2.0",
+    "tmp": "~0.1.0"
   }
 }
