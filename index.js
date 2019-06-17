@@ -43,9 +43,9 @@ module.exports = function(sql, connProps, callback, bDebug) {
 
 		var cmd = {
 			app, // путь к командному интерпретатору
-			argName: isWin ? '/c' : '-c', // имя аргумента командного интерпретатора, в который можно передавать команду
-			delim: isWin ? '&&' : ';', // разделитель инлайн команд
-			diskOpt: isWin ? '/d' : '' // опция cd указывающая что аргумент команды будет в формате drive:directory
+			argName: isWin ? '/c' : '-c', // default shell app
+			delim: isWin ? '&&' : ';', // multiple inline commands delimiter
+			diskOpt: isWin ? '/d' : '' // cd option for explicitly change current drive
 		};
 		if (bDebug) {
 			console.log('SQL:', sqlWrap(sql))
@@ -99,7 +99,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 				})
 			}
 			else {
-				callback(resultError, null, bEmpty);
+				callback(resultError, [], bEmpty);
 			}
 		}
 	};
