@@ -14,3 +14,17 @@ Then create subdirs /network/admin and put there your tnsnames.ors file.
 Windows users should then add this dir to PATH system variable
 
 \* - i.e. Windows users have to install MS Visual Studio in order to get oracledb work
+
+# Usage
+```
+var sql = `select * from mytable`;
+var connProps = 'myScheme/mySchemePassword@myTnsName';
+sqlplus(sql, connProps, function(err, data){
+	if (err) {
+		console.log(err)
+	}
+	else {
+		console.log(data)
+	}
+});
+```
