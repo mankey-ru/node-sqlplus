@@ -74,7 +74,13 @@ module.exports = function(sql, connProps, callback, bDebug) {
 			if (typeof exitCode === 'undefined') {
 				resultError += 'Command timed out\n';
 			}
+			if (output.indexOf('SP2-') === 0) { // SP2-0158: unknown SET option "CSV" - нужен клиент 12.2 минимум
+				resultError += output; 
+			}
 			if (output.indexOf('ORA-') !== -1) {
+				resultError += output;
+			}
+			if (output.indexOf(`'sqlplus'`) === 0) { // 'sqlplus' is not recognized as an internal or external command, operable program or batch file.
 				resultError += output;
 			}
 			if (output === '') {
@@ -94,6 +100,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 				csvparse(output, csvparseOpt, function(parseErr, data) {
 					if (parseErr) {
 						console.log('CSV parsing error: ' + parseErr)
+						console.log(output)
 					}
 					callback(parseErr || resultError, data);
 				})
