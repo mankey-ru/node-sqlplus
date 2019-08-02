@@ -29,13 +29,13 @@ module.exports = function(sql, connProps, callback, bDebug) {
 	});
 
 	debuglog('creation success', tmpObj);
-	debuglog(`Starting write to temp file «${tmpObj.fd}»...`);
+	debuglog(`Starting write to temp file «${tmpObj.name}»...`); // why tmpObj.fd (FileDescriptor) was used?
 
 	fs.writeSync(tmpObj.fd, sqlWrap(sql));
 
 	debuglog('write success');
 
-	var commandString = 'sqlplus1 -s ' + connProps + ' @' + tmpObj.name;
+	var commandString = 'sqlplus -s ' + connProps + ' @' + tmpObj.name;
 
 	var shellApp; // default shell app
 	if (isWin) {
