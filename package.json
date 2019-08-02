@@ -1,6 +1,6 @@
 {
   "name": "sqlplus",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A simple wrapper for Oracle SQL*Plus v.12.2+",
   "main": "index.js",
   "scripts": {
@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "csv-parse": "~1.2.0",
+    "fix-path": "^2.1.0",
     "tmp": "~0.1.0"
   }
 }
