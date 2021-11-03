@@ -11,7 +11,7 @@ if (isMac) {
 	require('fix-path')(); // Useful for Electron apps as GUI apps on macOS doesn't inherit the $PATH defined in your dotfiles (.bashrc/.bash_profile/.zshrc/etc).
 }
 
-module.exports = function(sql, connProps, callback, bDebug) {
+module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 	// bDebug = true;
 
 	if (typeof sql !== 'string') {
@@ -69,8 +69,9 @@ module.exports = function(sql, connProps, callback, bDebug) {
 	}
 
 	mySpawn.on('exit', finish);
-	var exitTimeout = setTimeout(finish, 5000); // wtf
-
+	mySpawn.on('error', finish);
+	var exitTimeout = setTimeout(finish, maxTimeout || 10000); // wtf
+	
 	function finish(exitCode) {
 		clearTimeout(exitTimeout);
 
@@ -79,6 +80,11 @@ module.exports = function(sql, connProps, callback, bDebug) {
 		var resultError = '';
 		var bEmpty = false;
 		if (typeof exitCode === 'undefined') {
+			// A running sqlplus keeps the SQL-Script file open. 
+			// After N sqlplus calls we see 'too many files open' errors.
+			// Therefore the running sqlplus process should be killed. 
+			debuglog('Terminating sqlplus process pid:' + mySpawn.pid)
+			mySpawn.kill('SIGKILL')
 			resultError += 'Command timed out\n';
 		}
 		if (stderr) {
@@ -117,6 +123,14 @@ module.exports = function(sql, connProps, callback, bDebug) {
 		else {
 			callback(resultError, [], bEmpty);
 		}
+		// remove temporary SQL file
+		try {
+			fs.unlinkSync(tmpObj.name)
+			debuglog('removed file ' + tmpObj.name)
+		} catch (fileError) {
+			debuglog('error removing file ' + tmpObj.name)
+		}
+		
 	}
 
 
