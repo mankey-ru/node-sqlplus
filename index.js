@@ -1,8 +1,5 @@
-const fs = require('fs');
-const tmp = require('tmp');
 const spawn = require('child_process').spawn;
 const csvparse = require('csv-parse');
-
 const isWin = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
@@ -22,20 +19,7 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 	}
 
 	debuglog(`process.platform: ${process.platform}`);
-	debuglog('Starting creation of tmp object...');
-
-	var tmpObj = tmp.fileSync({
-		postfix: '.sql'
-	});
-
-	debuglog('creation success', tmpObj);
-	debuglog(`Starting write to temp file «${tmpObj.name}»...`); // why tmpObj.fd (FileDescriptor) was used?
-
-	fs.writeSync(tmpObj.fd, sqlWrap(sql));
-
-	debuglog('write success');
-
-	var commandString = 'sqlplus -s ' + connProps + ' @' + tmpObj.name;
+	var commandString = 'sqlplus -s ' + connProps //+ ' @' + tmpObj.name;
 
 	var shellApp; // default shell app
 	if (isWin) {
@@ -47,15 +31,13 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 
 	var shellAppCmdArg = isWin ? '/c' : '-c';
 
-	debuglog(`shellApp: «${shellApp}»`);
-	debuglog(`shellAppCmdArg: «${shellAppCmdArg}»`);
-	debuglog(`commandString: «${commandString}»`);
-	debuglog('sql:', sqlWrap(sql));
-
+	debuglog(`shellApp: ${shellApp}`);
+	debuglog(`shellAppCmdArg: ${shellAppCmdArg}`);
+	debuglog(`commandString: ${commandString}`);
+	debuglog(`sql: ${sqlWrap(sql)}`);
+	
 	var mySpawn = spawn(shellApp, [shellAppCmdArg, commandString]); // http://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options	
-
-
-	var output = '';
+    var output = '';
 	var stderr = ''; // error of command itself, for example "ORA-" not included
 	mySpawn.stdout.on('data', onOutput);
 	mySpawn.stderr.on('data', function(data) {
@@ -70,25 +52,21 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 
 	mySpawn.on('exit', finish);
 	mySpawn.on('error', finish);
-	var exitTimeout = setTimeout(finish, maxTimeout || 10000); // wtf
-	
+		
+	var exitTimeout = setTimeout(finish, maxTimeout || 10000); 
+	mySpawn.stdin.write(sqlWrap(sql))
+
 	function finish(exitCode) {
 		clearTimeout(exitTimeout);
-
-		debuglog(`stderr: «${stderr}»`);
+		debuglog(`stderr: ${String(stderr)})`);
 
 		var resultError = '';
 		var bEmpty = false;
 		if (typeof exitCode === 'undefined') {
-			// A running sqlplus keeps the SQL-Script file open. 
-			// After N sqlplus calls we see 'too many files open' errors.
-			// Therefore the running sqlplus process should be killed. 
-			debuglog('Terminating sqlplus process pid:' + mySpawn.pid)
-			mySpawn.kill('SIGKILL')
 			resultError += 'Command timed out\n';
 		}
 		if (stderr) {
-			resultError += `STDERR ${stderr}\n`;
+			resultError += `STDERR ${String(stderr)}\n`;
 		}
 		if (output.indexOf('SP2-') === 0) { // SP2-0158: unknown SET option "CSV" - means that client version is less than 12.2
 			resultError += `${output}\n`;
@@ -103,8 +81,8 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 			bEmpty = true;
 		}
 
-		debuglog('EXITCODE: «' + exitCode + '»');
-		debuglog('COMMAND OUTPUT: «' + output + '»');
+		debuglog('EXITCODE: ' + exitCode);
+		debuglog('COMMAND OUTPUT: ' + output);
 
 		if (output !== '' && resultError === '') {
 			var colNamesArray = output.split(/\r\n?|\n/, 2)[1].split('"').join('').split(',');
@@ -115,7 +93,7 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 			};
 			csvparse(output, csvparseOpt, function(parseErr, data) {
 				if (parseErr) {
-					console.log(`SqlPlus result CSV parsing error: ${parseErr}\n OUTPUT: «${output}»`);
+					console.log(`sqlplus result CSV parsing error: ${parseErr}\n OUTPUT: «${output}»`);
 				}
 				callback(parseErr || resultError, data);
 			})
@@ -123,16 +101,7 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 		else {
 			callback(resultError, [], bEmpty);
 		}
-		// remove temporary SQL file
-		try {
-			fs.unlinkSync(tmpObj.name)
-			debuglog('removed file ' + tmpObj.name)
-		} catch (fileError) {
-			debuglog('error removing file ' + tmpObj.name)
-		}
-		
 	}
-
 
 	function sqlWrap(sql) {
 		return `
