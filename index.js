@@ -1,19 +1,22 @@
-const fs = require('fs');
-const tmp = require('tmp');
 const spawn = require('child_process').spawn;
 const csvparse = require('csv-parse');
-
 const isWin = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 
 if (isMac) {
-	require('fix-path')(); // Useful for Electron apps as GUI apps on macOS doesn't inherit the $PATH defined in your dotfiles (.bashrc/.bash_profile/.zshrc/etc).
+    require('fix-path')(); // Useful for Electron apps as GUI apps on macOS doesn't inherit the $PATH defined in your dotfiles (.bashrc/.bash_profile/.zshrc/etc).
 }
 
-module.exports = function(sql, connProps, callback, bDebug) {
-	// bDebug = true;
-
+/**
+ * @sql - SQL Statement to execute
+ * @conProps - username/password@databaseName using TNS names 
+ * @callback - callback function to pass results/error 
+ * @bDebug - enable debug output to console
+ * @maxTimeout - maximum time the function is waiting for results from SQLPLus process
+ **/
+module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
+	
 	if (typeof sql !== 'string') {
 		callback('Please provide first argument: {string} i.e. SELECT ID, NAME FROM USERS');
 	}
@@ -22,20 +25,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 	}
 
 	debuglog(`process.platform: ${process.platform}`);
-	debuglog('Starting creation of tmp object...');
-
-	var tmpObj = tmp.fileSync({
-		postfix: '.sql'
-	});
-
-	debuglog('creation success', tmpObj);
-	debuglog(`Starting write to temp file «${tmpObj.name}»...`); // why tmpObj.fd (FileDescriptor) was used?
-
-	fs.writeSync(tmpObj.fd, sqlWrap(sql));
-
-	debuglog('write success');
-
-	var commandString = 'sqlplus -s ' + connProps + ' @' + tmpObj.name;
+	var commandString = 'sqlplus -s ' + connProps
 
 	var shellApp; // default shell app
 	if (isWin) {
@@ -47,15 +37,13 @@ module.exports = function(sql, connProps, callback, bDebug) {
 
 	var shellAppCmdArg = isWin ? '/c' : '-c';
 
-	debuglog(`shellApp: «${shellApp}»`);
-	debuglog(`shellAppCmdArg: «${shellAppCmdArg}»`);
-	debuglog(`commandString: «${commandString}»`);
-	debuglog('sql:', sqlWrap(sql));
-
+	debuglog(`shellApp: ${shellApp}`);
+	debuglog(`shellAppCmdArg: ${shellAppCmdArg}`);
+	debuglog(`commandString: ${commandString}`);
+	debuglog(`sql: ${sqlWrap(sql)}`);
+	
 	var mySpawn = spawn(shellApp, [shellAppCmdArg, commandString]); // http://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options	
-
-
-	var output = '';
+        var output = '';
 	var stderr = ''; // error of command itself, for example "ORA-" not included
 	mySpawn.stdout.on('data', onOutput);
 	mySpawn.stderr.on('data', function(data) {
@@ -69,12 +57,15 @@ module.exports = function(sql, connProps, callback, bDebug) {
 	}
 
 	mySpawn.on('exit', finish);
-	var exitTimeout = setTimeout(finish, 5000); // wtf
+	mySpawn.on('error', finish);
+		
+	var exitTimeout = setTimeout(finish, maxTimeout || 10000); 
+	// pass SQL script to SQLPlus via stdin
+	mySpawn.stdin.write(sqlWrap(sql));
 
 	function finish(exitCode) {
 		clearTimeout(exitTimeout);
-
-		debuglog(`stderr: «${stderr}»`);
+		debuglog(`stderr: ${String(stderr)})`);
 
 		var resultError = '';
 		var bEmpty = false;
@@ -82,7 +73,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 			resultError += 'Command timed out\n';
 		}
 		if (stderr) {
-			resultError += `STDERR ${stderr}\n`;
+			resultError += `STDERR ${String(stderr)}\n`;
 		}
 		if (output.indexOf('SP2-') === 0) { // SP2-0158: unknown SET option "CSV" - means that client version is less than 12.2
 			resultError += `${output}\n`;
@@ -97,8 +88,8 @@ module.exports = function(sql, connProps, callback, bDebug) {
 			bEmpty = true;
 		}
 
-		debuglog('EXITCODE: «' + exitCode + '»');
-		debuglog('COMMAND OUTPUT: «' + output + '»');
+		debuglog('EXITCODE: ' + exitCode);
+		debuglog('COMMAND OUTPUT: ' + output);
 
 		if (output !== '' && resultError === '') {
 			var colNamesArray = output.split(/\r\n?|\n/, 2)[1].split('"').join('').split(',');
@@ -109,7 +100,7 @@ module.exports = function(sql, connProps, callback, bDebug) {
 			};
 			csvparse(output, csvparseOpt, function(parseErr, data) {
 				if (parseErr) {
-					console.log(`SqlPlus result CSV parsing error: ${parseErr}\n OUTPUT: «${output}»`);
+					console.log(`sqlplus result CSV parsing error: ${parseErr}\n OUTPUT: «${output}»`);
 				}
 				callback(parseErr || resultError, data);
 			})
@@ -119,7 +110,10 @@ module.exports = function(sql, connProps, callback, bDebug) {
 		}
 	}
 
-
+	/**
+	  * Adding output properties for SQLPlus to ensure CSV parser will work
+	  * @sql - SQL Statement to execute
+	  **/
 	function sqlWrap(sql) {
 		return `
 			SET MARKUP CSV ON
