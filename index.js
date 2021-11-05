@@ -5,12 +5,18 @@ const isMac = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
 
 if (isMac) {
-	require('fix-path')(); // Useful for Electron apps as GUI apps on macOS doesn't inherit the $PATH defined in your dotfiles (.bashrc/.bash_profile/.zshrc/etc).
+    require('fix-path')(); // Useful for Electron apps as GUI apps on macOS doesn't inherit the $PATH defined in your dotfiles (.bashrc/.bash_profile/.zshrc/etc).
 }
 
+/**
+ * @sql - SQL Statement to execute
+ * @conProps - username/password@databaseName using TNS names 
+ * @callback - callback function to pass results/error 
+ * @bDebug - enable debug output to console
+ * @maxTimeout - maximum time the function is waiting for results from SQLPLus process
+ **/
 module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
-	// bDebug = true;
-
+	
 	if (typeof sql !== 'string') {
 		callback('Please provide first argument: {string} i.e. SELECT ID, NAME FROM USERS');
 	}
@@ -19,7 +25,7 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 	}
 
 	debuglog(`process.platform: ${process.platform}`);
-	var commandString = 'sqlplus -s ' + connProps //+ ' @' + tmpObj.name;
+	var commandString = 'sqlplus -s ' + connProps
 
 	var shellApp; // default shell app
 	if (isWin) {
@@ -37,7 +43,7 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 	debuglog(`sql: ${sqlWrap(sql)}`);
 	
 	var mySpawn = spawn(shellApp, [shellAppCmdArg, commandString]); // http://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options	
-    var output = '';
+        var output = '';
 	var stderr = ''; // error of command itself, for example "ORA-" not included
 	mySpawn.stdout.on('data', onOutput);
 	mySpawn.stderr.on('data', function(data) {
@@ -54,7 +60,8 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 	mySpawn.on('error', finish);
 		
 	var exitTimeout = setTimeout(finish, maxTimeout || 10000); 
-	mySpawn.stdin.write(sqlWrap(sql))
+	// pass SQL script to SQLPlus via stdin
+	mySpawn.stdin.write(sqlWrap(sql));
 
 	function finish(exitCode) {
 		clearTimeout(exitTimeout);
@@ -103,6 +110,10 @@ module.exports = function(sql, connProps, callback, bDebug, maxTimeout) {
 		}
 	}
 
+	/**
+	  * Adding output properties for SQLPlus to ensure CSV parser will work
+	  * @sql - SQL Statement to execute
+	  **/
 	function sqlWrap(sql) {
 		return `
 			SET MARKUP CSV ON
