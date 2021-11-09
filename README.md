@@ -10,7 +10,7 @@ Then, on the next page you need to download two packages
 - Instant Client Package - SQL*Plus
 
 Then unpack both archives content together into one dir.
-Then create subdirs /network/admin and put there your tnsnames.ors file.
+Then create subdirs /network/admin and put there your tnsnames.ora file.
 Windows users might have to set 
 - PATH to the folder with sqlplus executable
 - ORACLE_HOME to your Oracle folder 
