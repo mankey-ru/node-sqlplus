@@ -1,5 +1,5 @@
 const spawn = require('child_process').spawn
-const csvparse = require('csv-parse')
+const csvparse = require('csv-parse').parse
 const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 const isLinux = process.platform === 'linux'
