@@ -1,5 +1,5 @@
 const spawn = require('child_process').spawn
-const csvparse = require('csv-parse')
+const csvparse = require('csv-parse').parse
 const isWin = process.platform === 'win32'
 const isMac = process.platform === 'darwin'
 const isLinux = process.platform === 'linux'
@@ -96,6 +96,7 @@ module.exports = function (sql, connProps, callback, bDebug, maxTimeout) {
       const colNamesArray = output.split(/\r\n?|\n/, 2)[1].split('"').join('').split(',')
       const csvparseOpt = {
         columns: colNamesArray,
+        relax_column_count: true,
         skip_lines_with_empty_values: true,
         from: 2 // first line is blank, second is headings
       }

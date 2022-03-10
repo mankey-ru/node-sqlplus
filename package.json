@@ -9,8 +9,8 @@
   "author": "mankey-ru",
   "license": "ISC",
   "dependencies": {
-    "csv-parse": "~1.2.0",
-    "fix-path": "^2.1.0",
-    "tmp": "~0.1.0"
+    "csv-parse": "~5.0.4",
+    "fix-path": "^4.0.0",
+    "tmp": "~0.2.1"
   }
 }

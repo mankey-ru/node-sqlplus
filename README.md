@@ -10,8 +10,11 @@ Then, on the next page you need to download two packages
 - Instant Client Package - SQL*Plus
 
 Then unpack both archives content together into one dir.
-Then create subdirs /network/admin and put there your tnsnames.ors file.
-Windows users should then add this dir to PATH system variable
+Then create subdirs /network/admin and put there your tnsnames.ora file.
+Windows users might have to set 
+- PATH to the folder with sqlplus executable
+- ORACLE_HOME to your Oracle folder 
+- TNS_ADMIN to the folder containing tnsnames.ora file 
 
 \* - i.e. Windows users have to install MS Visual Studio in order to get oracledb work
 
@@ -26,5 +29,7 @@ sqlplus(sql, connProps, function(err, rows){
 	else {
 		console.log(rows)
 	}
-});
+  }, 
+  false, // optional parameter: debug=false (default) activates debug messages on console
+  5000); // optional parameter: timeout=10000 (default) for sqlplus process in milliseconds
 ```
